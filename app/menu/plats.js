@@ -1,5 +1,6 @@
 import { useColorScheme } from '@/hooks/useColorScheme';
 import { Ionicons } from '@expo/vector-icons';
+import axios from 'axios';
 import React, { useEffect, useState } from 'react';
 import {
   Animated,
@@ -11,59 +12,21 @@ import {
   TouchableOpacity,
   View
 } from 'react-native';
-
-const plats = [
-  {
-    id: '1',
-    nom: 'Salade quinoa et légumes',
-    description: 'Riche en fibres et faible en sucre. Parfait pour le déjeuner.',
-    moment: 'Déjeuner',
-    calories: 320,
-    glucides: 45,
-    image: 'https://example.com/quinoa.jpg',
-    favori: false,
-  },
-  {
-    id: '2',
-    nom: 'Filet de poulet grillé',
-    description: 'Source de protéines maigres. À accompagner de légumes vapeur.',
-    moment: 'Dîner',
-    calories: 280,
-    glucides: 0,
-    image: 'https://example.com/poulet.jpg',
-    favori: false,
-  },
-  {
-    id: '3',
-    nom: 'Yaourt nature et amandes',
-    description: 'Collation saine à IG bas pour le matin ou l\'après-midi.',
-    moment: 'Collation',
-    calories: 180,
-    glucides: 12,
-    image: 'https://example.com/yaourt.jpg',
-    favori: false,
-  },
-  {
-    id: '4',
-    nom: 'Smoothie avocat-épinard',
-    description: 'Riche en bons lipides et vitamines, sans sucre ajouté.',
-    moment: 'Petit déjeuner',
-    calories: 250,
-    glucides: 15,
-    image: 'https://example.com/smoothie.jpg',
-    favori: false,
-  },
-];
+import { config } from '../conf/config';
 
 export default function PlatsScreen() {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedMoment, setSelectedMoment] = useState(null);
-  const [platsList, setPlatsList] = useState(plats);
+  const [platsList, setPlatsList] = useState([]);
   const [fadeAnim] = useState(new Animated.Value(0));
   const colorScheme = useColorScheme();
   const isDark = colorScheme === 'dark';
 
+  const API_URL = `${config.baseurl}/plats/`;
+
   useEffect(() => {
+    fetchPlats();
+
     Animated.timing(fadeAnim, {
       toValue: 1,
       duration: 500,
@@ -71,20 +34,46 @@ export default function PlatsScreen() {
     }).start();
   }, []);
 
+  const fetchPlats = async () => {
+    try {
+      const response = await axios.get(API_URL);
+      const platsFromApi = response.data.map((plat, index) => ({
+        ...plat,
+        id: plat.id?.toString() || index.toString(),
+        moment: plat.moment || 'Autre',
+        image: plat.image || 'https://via.placeholder.com/150',
+        favori: false,
+      }));
+      setPlatsList(platsFromApi);
+    } catch (error) {
+      console.error('Erreur de chargement des plats :', error.message);
+    }
+  };
+
   const toggleFavori = (id) => {
     setPlatsList(platsList.map(plat =>
       plat.id === id ? { ...plat, favori: !plat.favori } : plat
     ));
   };
 
+  // Moments fixes
+  const moments = [
+    'Petit déjeuner',
+    'Déjeuner',
+    'Dîner',
+    'Goûter',
+  ];
+
+  // Filtrage
   const filteredPlats = platsList.filter(plat => {
-    const matchesSearch = plat.nom.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                         plat.description.toLowerCase().includes(searchQuery.toLowerCase());
+    const matchesSearch =
+      plat.nom.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      plat.description.toLowerCase().includes(searchQuery.toLowerCase());
+
     const matchesMoment = !selectedMoment || plat.moment === selectedMoment;
+
     return matchesSearch && matchesMoment;
   });
-
-  const moments = Array.from(new Set(plats.map(plat => plat.moment)));
 
   const renderPlat = ({ item }) => (
     <Animated.View style={[styles.card, isDark && styles.cardDark, { opacity: fadeAnim }]}>
@@ -98,7 +87,7 @@ export default function PlatsScreen() {
           />
         </TouchableOpacity>
       </View>
-      
+
       <View style={styles.momentContainer}>
         <Ionicons name="time-outline" size={16} color="#f4511e" />
         <Text style={[styles.moment, isDark && styles.textDark]}>{item.moment}</Text>
@@ -127,9 +116,7 @@ export default function PlatsScreen() {
 
   return (
     <View style={[styles.container, isDark && styles.containerDark]}>
-      <Text style={[styles.title, isDark && styles.titleDark]}>
-        Suggestions de plats
-      </Text>
+      <Text style={[styles.title, isDark && styles.titleDark]}>Suggestions de plats</Text>
 
       <View style={styles.searchContainer}>
         <Ionicons name="search-outline" size={20} color={isDark ? '#fff' : '#333'} />
@@ -142,38 +129,32 @@ export default function PlatsScreen() {
         />
       </View>
 
-      <ScrollView
-        horizontal
-        showsHorizontalScrollIndicator={false}
-        style={styles.momentFilter}
-      >
+      <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.momentFilter}>
         <TouchableOpacity
-          style={[
-            styles.momentButton,
-            !selectedMoment && styles.momentButtonActive,
-          ]}
+          style={[styles.momentButton, !selectedMoment && styles.momentButtonActive]}
           onPress={() => setSelectedMoment(null)}
+          activeOpacity={0.7}
         >
-          <Text style={[
-            styles.momentButtonText,
-            !selectedMoment && styles.momentButtonTextActive,
-          ]}>
+          <Text
+            style={[styles.momentButtonText, !selectedMoment && styles.momentButtonTextActive]}
+            numberOfLines={1}
+            ellipsizeMode="tail"
+          >
             Tous
           </Text>
         </TouchableOpacity>
         {moments.map(moment => (
           <TouchableOpacity
             key={moment}
-            style={[
-              styles.momentButton,
-              selectedMoment === moment && styles.momentButtonActive,
-            ]}
+            style={[styles.momentButton, selectedMoment === moment && styles.momentButtonActive]}
             onPress={() => setSelectedMoment(moment)}
+            activeOpacity={0.7}
           >
-            <Text style={[
-              styles.momentButtonText,
-              selectedMoment === moment && styles.momentButtonTextActive,
-            ]}>
+            <Text
+              style={[styles.momentButtonText, selectedMoment === moment && styles.momentButtonTextActive]}
+              numberOfLines={1}
+              ellipsizeMode="tail"
+            >
               {moment}
             </Text>
           </TouchableOpacity>
@@ -182,7 +163,7 @@ export default function PlatsScreen() {
 
       {filteredPlats.length === 0 ? (
         <Text style={[styles.noData, isDark && styles.textDark]}>
-          Aucun plat ne correspond à votre recherche
+          Aucun plat trouvé pour ces critères.
         </Text>
       ) : (
         <FlatList
@@ -242,26 +223,32 @@ const styles = StyleSheet.create({
   },
   momentFilter: {
     marginBottom: 15,
+    paddingVertical: 10,
+    paddingHorizontal: 5,
+    
+   
+    
   },
-  momentButton: {
-    paddingHorizontal: 20,
-    paddingVertical: 8,
-    marginRight: 10,
-    borderRadius: 20,
-    backgroundColor: '#fff',
-    elevation: 2,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    minWidth: 100,
-    alignItems: 'center',
-    borderLeftWidth: 4,
-    borderLeftColor: '#2196f3',
-  },
+ momentButton: {
+  height: 40, // Hauteur fixe
+  minWidth: 100,
+ 
+  paddingHorizontal: 10,
+  marginRight: 10,
+  borderRadius: 20,
+  backgroundColor: '#fff',
+  elevation: 2,
+  shadowColor: '#000',
+  shadowOffset: { width: 0, height: 2 },
+  shadowOpacity: 0.1,
+  shadowRadius: 4,
+  alignItems: 'center',
+  justifyContent: 'center',
+  borderLeftWidth: 4,
+  borderLeftColor: '#2196f3',
+},
   momentButtonActive: {
     backgroundColor: '#2196f3',
-    transform: [{ scale: 1.05 }],
   },
   momentButtonText: {
     color: '#1565c0',
@@ -291,6 +278,7 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
     marginBottom: 10,
+    
   },
   nom: {
     fontSize: 18,
