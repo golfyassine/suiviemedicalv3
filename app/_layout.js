@@ -118,7 +118,7 @@ function AppDrawer() {
         <Drawer.Screen
           name="menu/sucre"
           options={{
-            title: 'Ajouter un taux de sucre',
+            title: 'taux de glycémie',
             drawerIcon: ({ color, size }) => (
               <Ionicons name="fitness-outline" size={size} color={color} />
             ),

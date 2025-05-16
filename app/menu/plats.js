@@ -61,7 +61,7 @@ export default function PlatsScreen() {
     'Petit déjeuner',
     'Déjeuner',
     'Dîner',
-    'Goûter',
+    'collation',
   ];
 
   // Filtrage

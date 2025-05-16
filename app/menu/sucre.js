@@ -1,28 +1,26 @@
-import { useColorScheme } from '@/hooks/useColorScheme';
-import { Ionicons } from '@expo/vector-icons';
 import React, { useEffect, useState } from 'react';
 import {
-    Alert,
-    Animated,
-    KeyboardAvoidingView,
-    Platform,
-    ScrollView,
-    StyleSheet,
-    Text,
-    TextInput,
-    TouchableOpacity,
-    View,
+  Alert,
+  Animated,
+  FlatList,
+  KeyboardAvoidingView,
+  Platform,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View
 } from 'react-native';
+import { config } from '../conf/config';
 
 export default function SucreScreen() {
   const [sucre, setSucre] = useState('');
   const [note, setNote] = useState('');
   const [entries, setEntries] = useState([]);
   const [fadeAnim] = useState(new Animated.Value(0));
-  const colorScheme = useColorScheme();
-  const isDark = colorScheme === 'dark';
 
   useEffect(() => {
+    fetchEntries();
     Animated.timing(fadeAnim, {
       toValue: 1,
       duration: 500,
@@ -30,23 +28,52 @@ export default function SucreScreen() {
     }).start();
   }, []);
 
-  const handleConfirm = () => {
+  const fetchEntries = async () => {
+    try {
+      const response = await fetch(`${config.baseurl}/sucre/liste`);
+      const data = await response.json();
+
+      // Convertir chaque date en objet Date si nécessaire
+      const parsed = data.map(item => ({
+        ...item,
+        date: item.date && item.date._seconds
+          ? new Date(item.date._seconds * 1000)
+          : new Date(item.date),
+      }));
+
+      setEntries(parsed);
+    } catch (error) {
+      Alert.alert('Erreur', 'Impossible de récupérer les données');
+    }
+  };
+
+  const handleConfirm = async () => {
     if (!sucre) {
-      Alert.alert('Erreur', 'Veuillez entrer un taux de sucre.');
+      Alert.alert('Erreur', 'Veuillez entrer un taux de glycémie.');
       return;
     }
 
-    const newEntry = {
-      id: Date.now(),
-      value: sucre,
-      date: new Date(),
-      note: note.trim() || undefined,
-    };
+    const valeurCorrigee = sucre.replace(',', '.');
 
-    setEntries([newEntry, ...entries]);
-    Alert.alert('Succès', `Taux de sucre enregistré : ${sucre} mg/dL`);
-    setSucre('');
-    setNote('');
+    try {
+      const response = await fetch(`${config.baseurl}/sucre/ajouter`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ value: valeurCorrigee, note }),
+      });
+
+      const data = await response.json();
+      if (response.ok) {
+        Alert.alert('Succès', `Taux de glycémie enregistré : ${data.value} mg/dL`);
+        setSucre('');
+        setNote('');
+        fetchEntries();
+      } else {
+        Alert.alert('Erreur', data.error || 'Erreur serveur');
+      }
+    } catch {
+      Alert.alert('Erreur', 'Impossible de sauvegarder la donnée');
+    }
   };
 
   const deleteEntry = (id) => {
@@ -58,202 +85,123 @@ export default function SucreScreen() {
         {
           text: 'Supprimer',
           style: 'destructive',
-          onPress: () => setEntries(entries.filter(entry => entry.id !== id)),
+          onPress: async () => {
+            try {
+              const response = await fetch(`${config.baseurl}/sucre/supprimer/${id}`, {
+                method: 'DELETE'
+              });
+              if (response.ok) fetchEntries();
+              else Alert.alert('Erreur', 'Impossible de supprimer');
+            } catch {
+              Alert.alert('Erreur', 'Erreur serveur');
+            }
+          },
         },
       ]
     );
   };
 
   const getStatusColor = (value) => {
-    const numValue = parseFloat(value);
-    if (numValue < 70) return '#ff4444';
-    if (numValue > 180) return '#ffbb33';
-    return '#00C851';
+    if (value < 70) return '#ff4444';     // hypoglycémie
+    if (value > 180) return '#ffbb33';    // hyperglycémie
+    return '#00C851';                     // normal
+  };
+
+  const renderEntry = ({ item }) => {
+    console.log('Item date:', item.date);
+
+    let dateAffichee = 'Date invalide';
+    try {
+      const d = new Date(item.date);
+      if (!isNaN(d.getTime())) {
+        dateAffichee = d.toLocaleString();
+      }
+    } catch (e) {}
+
+    return (
+      <View style={styles.entryCard}>
+        <View style={styles.entryHeader}>
+          <Text style={[styles.entryValue, { color: getStatusColor(item.value) }]}>
+            {item.value} mg/dL
+          </Text>
+          <TouchableOpacity onPress={() => deleteEntry(item.id)}>
+            <Text style={{ color: 'red', fontWeight: 'bold' }}>X</Text>
+          </TouchableOpacity>
+        </View>
+        <Text>{dateAffichee}</Text>
+        {item.note ? <Text style={{ fontStyle: 'italic' }}>{item.note}</Text> : null}
+      </View>
+    );
   };
 
   return (
     <KeyboardAvoidingView
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-      style={[styles.container, isDark && styles.containerDark]}
+      style={styles.container}
     >
-      <ScrollView style={styles.scrollView}>
-        <Animated.View style={[styles.content, { opacity: fadeAnim }]}>
-          <Text style={[styles.title, isDark && styles.titleDark]}>
-            Ajouter un taux de sucre
-          </Text>
-
-          <View style={styles.inputContainer}>
-            <TextInput
-              style={[styles.input, isDark && styles.inputDark]}
-              keyboardType="numeric"
-              placeholder="Taux de sucre (mg/dL)"
-              placeholderTextColor={isDark ? '#888' : '#666'}
-              value={sucre}
-              onChangeText={setSucre}
-            />
-
-            <TextInput
-              style={[styles.input, styles.noteInput, isDark && styles.inputDark]}
-              placeholder="Note (optionnel)"
-              placeholderTextColor={isDark ? '#888' : '#666'}
-              value={note}
-              onChangeText={setNote}
-              multiline
-            />
-
-            <TouchableOpacity
-              style={[styles.saveButton, { backgroundColor: '#2196f3' }]}
-              onPress={handleConfirm}
-            >
-              <Text style={styles.saveButtonText}>Enregistrer</Text>
-            </TouchableOpacity>
-          </View>
-
-          <View style={styles.historyContainer}>
-            <Text style={[styles.historyTitle, isDark && styles.titleDark]}>
-              Historique
-            </Text>
-            {entries.map((entry) => (
-              <View
-                key={entry.id}
-                style={[styles.entryCard, isDark && styles.entryCardDark]}
-              >
-                <View style={styles.entryHeader}>
-                  <Text style={[styles.entryValue, { color: getStatusColor(entry.value) }]}>
-                    {entry.value} mg/dL
-                  </Text>
-                  <TouchableOpacity
-                    onPress={() => deleteEntry(entry.id)}
-                    style={styles.deleteButton}
-                  >
-                    <Ionicons name="trash-outline" size={20} color="#ff4444" />
-                  </TouchableOpacity>
-                </View>
-                <Text style={[styles.entryDate, isDark && styles.textDark]}>
-                  {entry.date.toLocaleString()}
-                </Text>
-                {entry.note && (
-                  <Text style={[styles.entryNote, isDark && styles.textDark]}>
-                    {entry.note}
-                  </Text>
-                )}
-              </View>
-            ))}
-          </View>
-        </Animated.View>
-      </ScrollView>
+      <Animated.View style={{ opacity: fadeAnim, flex: 1 }}>
+        <FlatList
+          ListHeaderComponent={
+            <>
+              <Text style={styles.title}>Ajouter un taux de glycémie</Text>
+              <TextInput
+                style={styles.input}
+                keyboardType="decimal-pad"
+                placeholder="Taux de sucre (mg/dL)"
+                value={sucre}
+                onChangeText={setSucre}
+              />
+              <TextInput
+                style={[styles.input, { height: 80 }]}
+                placeholder="Note (optionnel)"
+                value={note}
+                onChangeText={setNote}
+                multiline
+              />
+              <TouchableOpacity style={styles.saveButton} onPress={handleConfirm}>
+                <Text style={{ color: 'white' }}>Enregistrer</Text>
+              </TouchableOpacity>
+              <Text style={[styles.title, { marginTop: 20 }]}>Historique</Text>
+            </>
+          }
+          data={entries}
+          keyExtractor={item => item.id}
+          renderItem={renderEntry}
+        />
+      </Animated.View>
     </KeyboardAvoidingView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#f0f8ff',
-  },
-  containerDark: {
-    backgroundColor: '#1a237e',
-  },
-  scrollView: {
-    flex: 1,
-  },
-  content: {
-    padding: 20,
-  },
-  title: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    marginBottom: 20,
-    textAlign: 'center',
-    color: '#1565c0',
-  },
-  titleDark: {
-    color: '#90caf9',
-  },
-  inputContainer: {
-    marginBottom: 20,
-  },
+  container: { flex: 1, padding: 20 },
+  title: { fontSize: 24, fontWeight: 'bold', marginBottom: 10 },
   input: {
     borderWidth: 1,
-    borderColor: '#90caf9',
-    padding: 15,
-    borderRadius: 10,
-    marginBottom: 15,
-    backgroundColor: '#fff',
-    fontSize: 16,
-    color: '#1565c0',
-  },
-  inputDark: {
-    borderColor: '#3949ab',
-    backgroundColor: '#283593',
-    color: '#e3f2fd',
-  },
-  noteInput: {
-    height: 80,
-    textAlignVertical: 'top',
+    borderColor: '#aaa',
+    padding: 10,
+    marginVertical: 10,
+    borderRadius: 8,
   },
   saveButton: {
     backgroundColor: '#2196f3',
     padding: 15,
     borderRadius: 10,
     alignItems: 'center',
-    marginTop: 10,
-  },
-  saveButtonText: {
-    color: '#fff',
-    fontSize: 16,
-    fontWeight: 'bold',
-  },
-  historyContainer: {
-    marginTop: 20,
-  },
-  historyTitle: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    marginBottom: 15,
-    color: '#1565c0',
   },
   entryCard: {
-    backgroundColor: '#fff',
+    backgroundColor: '#eee',
     padding: 15,
     borderRadius: 10,
-    marginBottom: 10,
-    elevation: 2,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    borderLeftWidth: 4,
-    borderLeftColor: '#2196f3',
-  },
-  entryCardDark: {
-    backgroundColor: '#283593',
+    marginVertical: 5,
   },
   entryHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    alignItems: 'center',
     marginBottom: 5,
   },
   entryValue: {
-    fontSize: 18,
     fontWeight: 'bold',
-    color: '#1565c0',
-  },
-  entryDate: {
-    fontSize: 14,
-    color: '#1976d2',
-    marginBottom: 5,
-  },
-  entryNote: {
-    fontSize: 14,
-    color: '#1976d2',
-    fontStyle: 'italic',
-  },
-  textDark: {
-    color: '#e3f2fd',
-  },
-  deleteButton: {
-    padding: 5,
+    fontSize: 18,
   },
 });
