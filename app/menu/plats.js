@@ -114,7 +114,7 @@ export default function PlatsScreen() {
     </Animated.View>
   );
 
-  return (
+   return (
     <View style={[styles.container, isDark && styles.containerDark]}>
       <Text style={[styles.title, isDark && styles.titleDark]}>Suggestions de plats</Text>
 
@@ -129,37 +129,35 @@ export default function PlatsScreen() {
         />
       </View>
 
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.momentFilter}>
-        <TouchableOpacity
-          style={[styles.momentButton, !selectedMoment && styles.momentButtonActive]}
-          onPress={() => setSelectedMoment(null)}
-          activeOpacity={0.7}
+      <View style={styles.momentWrapper}>
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={styles.momentFilter}
         >
-          <Text
-            style={[styles.momentButtonText, !selectedMoment && styles.momentButtonTextActive]}
-            numberOfLines={1}
-            ellipsizeMode="tail"
-          >
-            Tous
-          </Text>
-        </TouchableOpacity>
-        {moments.map(moment => (
           <TouchableOpacity
-            key={moment}
-            style={[styles.momentButton, selectedMoment === moment && styles.momentButtonActive]}
-            onPress={() => setSelectedMoment(moment)}
+            style={[styles.momentButton, !selectedMoment && styles.momentButtonActive]}
+            onPress={() => setSelectedMoment(null)}
             activeOpacity={0.7}
           >
-            <Text
-              style={[styles.momentButtonText, selectedMoment === moment && styles.momentButtonTextActive]}
-              numberOfLines={1}
-              ellipsizeMode="tail"
-            >
-              {moment}
+            <Text style={[styles.momentButtonText, !selectedMoment && styles.momentButtonTextActive]} numberOfLines={1}>
+              Tous
             </Text>
           </TouchableOpacity>
-        ))}
-      </ScrollView>
+          {moments.map(moment => (
+            <TouchableOpacity
+              key={moment}
+              style={[styles.momentButton, selectedMoment === moment && styles.momentButtonActive]}
+              onPress={() => setSelectedMoment(moment)}
+              activeOpacity={0.7}
+            >
+              <Text style={[styles.momentButtonText, selectedMoment === moment && styles.momentButtonTextActive]} numberOfLines={1}>
+                {moment}
+              </Text>
+            </TouchableOpacity>
+          ))}
+        </ScrollView>
+      </View>
 
       {filteredPlats.length === 0 ? (
         <Text style={[styles.noData, isDark && styles.textDark]}>
@@ -221,32 +219,31 @@ const styles = StyleSheet.create({
   searchInputDark: {
     color: '#e3f2fd',
   },
-  momentFilter: {
+  momentWrapper: {
+    height: 50,
     marginBottom: 15,
-    paddingVertical: 10,
-    paddingHorizontal: 5,
-    
-   
-    
   },
- momentButton: {
-  height: 40, // Hauteur fixe
-  minWidth: 100,
- 
-  paddingHorizontal: 10,
-  marginRight: 10,
-  borderRadius: 20,
-  backgroundColor: '#fff',
-  elevation: 2,
-  shadowColor: '#000',
-  shadowOffset: { width: 0, height: 2 },
-  shadowOpacity: 0.1,
-  shadowRadius: 4,
-  alignItems: 'center',
-  justifyContent: 'center',
-  borderLeftWidth: 4,
-  borderLeftColor: '#2196f3',
-},
+  momentFilter: {
+    alignItems: 'center',
+    paddingHorizontal: 5,
+  },
+  momentButton: {
+    height: 40,
+    paddingHorizontal: 12,
+    minWidth: 100,
+    marginRight: 10,
+    borderRadius: 20,
+    backgroundColor: '#fff',
+    justifyContent: 'center',
+    alignItems: 'center',
+    elevation: 2,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    borderLeftWidth: 4,
+    borderLeftColor: '#2196f3',
+  },
   momentButtonActive: {
     backgroundColor: '#2196f3',
   },
@@ -278,7 +275,6 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
     marginBottom: 10,
-    
   },
   nom: {
     fontSize: 18,
