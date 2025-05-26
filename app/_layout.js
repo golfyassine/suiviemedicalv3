@@ -4,7 +4,7 @@ import { createDrawerNavigator } from '@react-navigation/drawer';
 import { DarkTheme, DefaultTheme } from '@react-navigation/native';
 import { useFonts } from 'expo-font';
 import { StatusBar } from 'expo-status-bar';
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { Animated, StyleSheet, Text } from 'react-native';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { useRouter } from 'expo-router';
@@ -73,13 +73,14 @@ const CustomDarkTheme = {
 function ProtectedDrawer() {
   const { isLoggedIn, setIsLoggedIn } = useAuth();
   const router = useRouter();
+  const [showRegister, setShowRegister] = useState(false);
 
   if (!isLoggedIn) {
-    return <LoginScreen />;
-  }
-
-if (!isLoggedIn) {
-    return <Register />;
+    return showRegister ? (
+      <Register onBack={() => setShowRegister(false)} />
+    ) : (
+      <LoginScreen onRegister={() => setShowRegister(true)} />
+    );
   }
 
   return (

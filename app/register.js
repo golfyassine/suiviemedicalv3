@@ -111,24 +111,43 @@ export default function Register() {
     return true;
   };
 
-  const handleNext = () => {
-    if (validateStep()) {
-      if (step === 4) {
-        // Firebase registration removed, replace with simple success logic
-        Alert.alert('Succès', `Inscription simulée pour ${formData.email}`);
-        router.push('/'); // Or navigate to another screen
+const handleNext = async () => {
+  if (!validateStep()) return;
+
+  if (step === 4) {
+    try {
+      const response = await fetch('http://192.168.1.11:3000/auth/signup', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(formData),
+      });
+
+      if (response.ok) {
+        Alert.alert('Succès', 'Inscription réussie !');
+        router.push('/');
       } else {
-        Animated.timing(formOpacity, {
-          toValue: 0,
-          duration: 200,
-          easing: Easing.ease,
-          useNativeDriver: true,
-        }).start(() => {
-          setStep(step + 1);
-        });
+        let errorMsg = 'Une erreur est survenue.';
+        try {
+          const text = await response.text(); // lire le corps 1 fois
+          const errorData = JSON.parse(text); // parser le JSON
+          if (errorData.message) errorMsg = errorData.message;
+          else if (errorData.error) errorMsg = errorData.error;
+        } catch (e) {
+          console.log('Impossible de parser la réponse JSON:', e);
+        }
+        Alert.alert('Erreur', errorMsg);
       }
+    } catch (error) {
+      console.error('Erreur fetch:', error);
+      Alert.alert('Erreur', `Impossible d'envoyer la requête : ${error.message}`);
     }
-  };
+    return;
+  }
+
+  setStep(step + 1);
+};
+
+
 
   const handleBack = () => {
     Animated.timing(formOpacity, {

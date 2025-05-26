@@ -15,10 +15,10 @@ const lightBlue = '#90caf9';
 const white = '#f0f8ff';
 const textColor = '#1565c0';
 
-// Replace with your real backend IP if needed
+// Remplace par l’URL de ton backend si besoin
 const API_URL = 'http://192.168.1.11:3000/auth/login';
 
-export default function Login() {
+export default function Login({ onRegister }) {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const { setIsLoggedIn } = useAuth();
@@ -26,13 +26,13 @@ export default function Login() {
 
   const handleLogin = async () => {
     if (!email || !password) {
-      console.log("Login : false / ")
+      console.log("Login : false / ");
       Alert.alert('Erreur', 'Veuillez remplir tous les champs.');
       return;
     }
 
     try {
-      console.log(API_URL)
+      console.log(API_URL);
       const response = await fetch(API_URL, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -41,11 +41,11 @@ export default function Login() {
 
       const data = await response.json();
       if (!response.ok) throw new Error(data.message || 'Erreur lors de la connexion');
-      console.log("data : ", data)
+      console.log("data : ", data);
       Alert.alert('Connexion réussie', `Bienvenue, ${data.user?.name || email} !`);
       setIsLoggedIn(true); // ✅ update auth state
       
-      console.log("Login : true / ")
+      console.log("Login : true / ");
       
     } catch (error) {
       Alert.alert('Erreur', error.message);
@@ -75,7 +75,7 @@ export default function Login() {
       <TouchableOpacity style={styles.button} onPress={handleLogin}>
         <Text style={styles.buttonText}>Se connecter</Text>
       </TouchableOpacity>
-      <TouchableOpacity onPress={() => router.push('/register')}>
+      <TouchableOpacity onPress={onRegister}>
         <Text style={styles.link}>Pas encore inscrit ? Crée un compte.</Text>
       </TouchableOpacity>
     </View>
