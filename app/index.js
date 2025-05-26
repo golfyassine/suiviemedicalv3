@@ -8,6 +8,7 @@ import {
   View,
 } from 'react-native';
 
+
 export default function Accueil() {
   const user = {
     name: "John Doe",

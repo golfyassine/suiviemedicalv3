@@ -12,7 +12,7 @@ import {
   TouchableOpacity,
   View
 } from 'react-native';
-import { config } from '../conf/config';
+import { config } from '../../conf/config';
 
 export default function PlatsScreen() {
   const [searchQuery, setSearchQuery] = useState('');

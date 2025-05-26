@@ -1,24 +1,29 @@
 import { useColorScheme } from '@/hooks/useColorScheme';
 import { Ionicons } from '@expo/vector-icons';
 import { createDrawerNavigator } from '@react-navigation/drawer';
-import { DarkTheme, DefaultTheme, ThemeProvider } from '@react-navigation/native';
+import { DarkTheme, DefaultTheme } from '@react-navigation/native';
 import { useFonts } from 'expo-font';
 import { StatusBar } from 'expo-status-bar';
-import { useEffect, useRef } from 'react';
+import React, { useEffect, useRef } from 'react';
 import { Animated, StyleSheet, Text } from 'react-native';
+import { AuthProvider, useAuth } from './context/AuthContext';
+import { useRouter } from 'expo-router';
 
 // Import des pages
-import Accueil from './index'; // Accueil = profil utilisateur
-import MedecinScreen from './menu/medecin'; // Page médecin
-import NutritionnisteScreen from './menu/nutritionniste'; // Page nutritionniste
-import PlatsScreen from './menu/plats'; // Suggestions de plats
-import Stats from './menu/stats'; // Statistiques
-import Sucre from './menu/sucre'; // Ajout taux de sucre
-import TraitementScreen from './menu/traitement'; // 📌 assure-toi que le chemin est correct
+
+import Accueil from './index';
+import MedecinScreen from './menu/medecin';
+import NutritionnisteScreen from './menu/nutritionniste';
+import PlatsScreen from './menu/plats';
+import Stats from './menu/stats';
+import Sucre from './menu/sucre';
+import TraitementScreen from './menu/traitement';
+import LoginScreen from './login';
+import Register from './register';
 
 const Drawer = createDrawerNavigator();
 
-// Composant pour les groupes de menu avec animation
+// Animation pour les groupes de menu
 const MenuGroup = ({ title, children }) => {
   const fadeAnim = useRef(new Animated.Value(0)).current;
 
@@ -38,7 +43,6 @@ const MenuGroup = ({ title, children }) => {
   );
 };
 
-// Thème personnalisé
 const CustomTheme = {
   ...DefaultTheme,
   colors: {
@@ -65,7 +69,19 @@ const CustomDarkTheme = {
   },
 };
 
-function AppDrawer() {
+// Composant protégé avec navigation drawer
+function ProtectedDrawer() {
+  const { isLoggedIn, setIsLoggedIn } = useAuth();
+  const router = useRouter();
+
+  if (!isLoggedIn) {
+    return <LoginScreen />;
+  }
+
+if (!isLoggedIn) {
+    return <Register />;
+  }
+
   return (
     <Drawer.Navigator
       initialRouteName="index"
@@ -110,15 +126,11 @@ function AppDrawer() {
         component={Accueil}
       />
 
-      <Drawer.Group
-        screenOptions={{
-          headerShown: true,
-        }}
-      >
+      <Drawer.Group screenOptions={{ headerShown: true }}>
         <Drawer.Screen
           name="menu/sucre"
           options={{
-            title: 'taux de glycémie',
+            title: 'Taux de glycémie',
             drawerIcon: ({ color, size }) => (
               <Ionicons name="fitness-outline" size={size} color={color} />
             ),
@@ -147,11 +159,7 @@ function AppDrawer() {
         />
       </Drawer.Group>
 
-      <Drawer.Group
-        screenOptions={{
-          headerShown: true,
-        }}
-      >
+      <Drawer.Group screenOptions={{ headerShown: true }}>
         <Drawer.Screen
           name="menu/plats"
           options={{
@@ -184,7 +192,41 @@ function AppDrawer() {
         }}
         component={MedecinScreen}
       />
+
+      {/* Écran déconnexion placé DANS le Drawer.Navigator */}
+      <Drawer.Screen
+        name="logout"
+        options={{
+          title: 'Déconnexion',
+          drawerIcon: ({ color, size }) => (
+            <Ionicons name="log-out-outline" size={size} color={color} />
+          ),
+        }}
+        component={() => {
+          useEffect(() => {
+            setIsLoggedIn(false);
+            
+          }, []);
+          return null;
+        }}
+      />
     </Drawer.Navigator>
+  );
+}
+
+export default function RootLayout() {
+  const colorScheme = useColorScheme();
+  const [loaded] = useFonts({
+    SpaceMono: require('../assets/fonts/SpaceMono-Regular.ttf'),
+  });
+
+  if (!loaded) return null;
+
+  return (
+    <AuthProvider>
+      <StatusBar style={colorScheme === 'dark' ? 'light' : 'dark'} />
+      <ProtectedDrawer />
+    </AuthProvider>
   );
 }
 
@@ -202,19 +244,3 @@ const styles = StyleSheet.create({
     letterSpacing: 1,
   },
 });
-
-export default function RootLayout() {
-  const colorScheme = useColorScheme();
-  const [loaded] = useFonts({
-    SpaceMono: require('../assets/fonts/SpaceMono-Regular.ttf'),
-  });
-
-  if (!loaded) return null;
-
-  return (
-    <ThemeProvider value={colorScheme === 'dark' ? CustomDarkTheme : CustomTheme}>
-      <StatusBar style={colorScheme === 'dark' ? 'light' : 'dark'} />
-      <AppDrawer />
-    </ThemeProvider>
-  );
-}
