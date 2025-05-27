@@ -1,5 +1,6 @@
-
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import React, { useState, useRef, useEffect } from 'react';
+import { useAuth } from './context/AuthContext';
 
 import {
   View,
@@ -30,6 +31,8 @@ const isValidPhoneNumber = (phone) => {
 };
 
 export default function Register() {
+    const [isLoggedIn] = React.useState(false);
+    const { setIsLoggedIn } = useAuth();
   const router = useRouter();
   const [step, setStep] = useState(1);
   const [formData, setFormData] = useState({
@@ -116,36 +119,46 @@ const handleNext = async () => {
 
   if (step === 4) {
     try {
-      const response = await fetch('http://192.168.1.11:3000/auth/signup', {
+      // Inscription
+      const signupResponse = await fetch('http://192.168.1.11:3000/auth/signup', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(formData),
       });
 
-      if (response.ok) {
-        Alert.alert('Succès', 'Inscription réussie !');
-        router.push('/');
-      } else {
-        let errorMsg = 'Une erreur est survenue.';
-        try {
-          const text = await response.text(); // lire le corps 1 fois
-          const errorData = JSON.parse(text); // parser le JSON
-          if (errorData.message) errorMsg = errorData.message;
-          else if (errorData.error) errorMsg = errorData.error;
-        } catch (e) {
-          console.log('Impossible de parser la réponse JSON:', e);
-        }
-        Alert.alert('Erreur', errorMsg);
-      }
+      const signupData = await signupResponse.json();
+      if (!signupResponse.ok) throw new Error(signupData.message || "Erreur lors de l'inscription");
+
+      // Connexion auto
+      const loginResponse = await fetch('http://192.168.1.11:3000/auth/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          email: formData.email,
+          password: formData.password,
+        }),
+      });
+
+      const loginData = await loginResponse.json();
+      if (!loginResponse.ok) throw new Error(loginData.message || "Erreur lors de la connexion automatique");
+
+      const token = loginData.idToken;
+      if (!token) throw new Error("Token non reçu après connexion");
+
+      await AsyncStorage.setItem('userToken', token);
+      
+      Alert.alert('Succès', `Inscription et connexion réussies, bienvenue ${formData.email} !`);
+setIsLoggedIn(true); // ✅ update auth state
+      
+      console.log("Login : true / ");      
     } catch (error) {
-      console.error('Erreur fetch:', error);
-      Alert.alert('Erreur', `Impossible d'envoyer la requête : ${error.message}`);
+      Alert.alert('Erreur', error.message);
     }
     return;
   }
-
   setStep(step + 1);
 };
+
 
 
 
